@@ -19,7 +19,7 @@ print install_state_details xxxx        where xxx is name of firewall cluster, w
 
 sorting and getting policy name by:
 
-dbedit -local -f $DBEDIT | grep policy_name | sort -u | awk -F':' '{ gsub(" ", "", $0 ); print $2 }'
+dbedit -local -f dbedit.txt | grep policy_name | sort -u | awk -F':' '{ gsub(" ", "", $0 ); print $2 }'
 
 
 
