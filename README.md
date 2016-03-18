@@ -1,8 +1,10 @@
 # CheckPoint
-
 this is examle of script which do auto installation of firewall policies on versions R77
+
 script can run via cron or manually from command line
+
 script work together with git client, please keep in mind that base Gaia OS does not have git client, you have to compile it
+
 please note that script code is limited to show you finding policy in database and installing shared policy on multiple clusters, my original code in production is large and can not be shared, it should act as reference
 
 see code comments!
