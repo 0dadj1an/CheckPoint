@@ -1,4 +1,9 @@
-# CheckPoint policy auto installation
+# CheckPoint 
+
+#policy auto installation
+auto_install.sh
+dbedit.sh
+
 this is examle of script which do auto installation of firewall policies on versions R77
 
 script can run via cron or manually from command line
@@ -30,5 +35,4 @@ calling fwm load for policy installation
 example:
 
 fwm load $FWDIR/conf/Standart.W" clusterA
-
 
