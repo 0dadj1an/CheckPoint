@@ -1,4 +1,4 @@
-# CheckPoint Policy Autoinstall
+# CheckPoint policy auto installation
 this is examle of script which do auto installation of firewall policies on versions R77
 
 script can run via cron or manually from command line
