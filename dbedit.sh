@@ -23,7 +23,6 @@ a=$(exec dbedit -s localhost -globallock 2>&1 &)
        then
 	 	 	printf "DATABASE is LOCKED, someone is logged into management, no installation will occur...\n"
 			printf "log into mgmt and install policy manually by running:\n"
-    		printf "/home/admin/git/CheckPoint/auto_install.sh\n"
-        exit 1
-   
+    		        printf "/home/admin/git/CheckPoint/auto_install.sh\n"
+        exit 1 
 fi
