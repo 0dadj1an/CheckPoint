@@ -21,7 +21,20 @@ LOG=/home/admin/log.log
 IP=1.1.1.1
 A=$(/sbin/ifconfig eth1 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://')
 
+
 run_wizard(){
+	
+#basic kernel modification, disable antispoofing and other stuff according to POC gide	
+echo "fw_local_interface_anti_spoofing=" >> $FWDIR/modules/fwkern.conf
+echo "fw_antispoofing_enabled=0" >> $FWDIR/modules/fwkern.conf
+echo "sim_anti_spoofing_enabled=0" >> $FWDIR/modules/fwkern.conf
+echo "fw_icmp_redirects=1" >> $FWDIR/modules/fwkern.conf
+echo "fw_allow_out_of_state_icmp_error=1" >> $FWDIR/modules/fwkern.conf
+echo "psl_tap_enable=1" >> $FWDIR/modules/fwkern.conf
+echo "fw_tap_enable=1" >> $FWDIR/modules/fwkern.conf
+
+
+#run basic first time wizard
 /bin/config_system -s 'install_security_managment=true&install_mgmt_primary=true&install_mgmt_secondary=false&install_security_gw=true&mgmt_gui_clients_radio=any&mgmt_admin_name=admin&mgmt_admin_passwd=checkpoint123&hostname=checkpoint&ntp_primary=europe.pool.ntp.org&primary=8.8.8.8&download_info=true&timezone=Europe/Vienna' 
 a=$? 
 if [[ "$a" -eq 1 ]];
@@ -46,7 +59,7 @@ fi
 set_settings(){
 mgmt_cli login -r true > /home/admin/id.txt
 sleep 10
-mgmt_cli set simple-gateway name "checkpoint" firewall true application-control true url-filtering true ips true anti-bot true anti-virus true threat-emulation true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli set simple-gateway name "checkpoint" firewall true application-control true url-filtering true ips true anti-bot true anti-virus true threat-emulation false --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 mgmt_cli add access-rule layer "Network" position 1 name "Rule 1" action "Accept" track "Log" --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 mgmt_cli set access-rule name "Cleanup rule" layer "Network" enabled "False"  --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 sleep 5

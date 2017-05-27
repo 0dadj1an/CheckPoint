@@ -40,6 +40,12 @@ fw ver -k >>$LOG 2>>$LOG
 print_format
 installed_jumbo_take >>$LOG 2>>$LOG
 print_format
+cpinfo -y all >>$LOG 2>>$LOG
+print_format
+fw stat >>$LOG 2>>$LOG
+print_format
+
+
 
 #ha
 cphaprob state >>$LOG 2>>$LOG
