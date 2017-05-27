@@ -136,7 +136,7 @@ do
                 continue              
 	fi
 	printf "IP changed, removing lock file\n" >>$LOG
-	rm -r /home/admin/home/admin/first_time.lock >/dev/null 2>/dev/null
+	rm -r /home/admin/first_time.lock >/dev/null 2>/dev/null
 	printf "entering main check\n" >>$LOG
 	main_check
 
