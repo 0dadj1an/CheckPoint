@@ -17,7 +17,7 @@
 FIRSTIMELOCK=/home/admin/first_time.lock
 REBOOTLOCK=/home/admin/reboot_lock.lock
 DONELOCK=/home/admin/done_lock.lock
-LOG=/home/admin/log.log
+LOG=/home/admin/first_timelog.log
 IP=1.1.1.1
 A=$(/sbin/ifconfig eth1 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://')
 
@@ -25,7 +25,7 @@ A=$(/sbin/ifconfig eth1 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://
 run_wizard(){
 	
 #basic kernel modification, disable antispoofing and other stuff according to POC gide	
-echo "fw_local_interface_anti_spoofing=" >> $FWDIR/modules/fwkern.conf
+echo "fw_local_interface_anti_spoofing=0" >> $FWDIR/modules/fwkern.conf
 echo "fw_antispoofing_enabled=0" >> $FWDIR/modules/fwkern.conf
 echo "sim_anti_spoofing_enabled=0" >> $FWDIR/modules/fwkern.conf
 echo "fw_icmp_redirects=1" >> $FWDIR/modules/fwkern.conf
@@ -60,15 +60,18 @@ set_settings(){
 mgmt_cli login -r true > /home/admin/id.txt
 sleep 10
 mgmt_cli set simple-gateway name "checkpoint" firewall true application-control true url-filtering true ips true anti-bot true anti-virus true threat-emulation false --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+sleep 10
 mgmt_cli add access-rule layer "Network" position 1 name "Rule 1" action "Accept" track "Log" --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+sleep 10
 mgmt_cli set access-rule name "Cleanup rule" layer "Network" enabled "False"  --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-sleep 5
+sleep 10
 mgmt_cli publish -s /home/admin/id.txt >>$LOG 2>>$LOG
 a=$?
 sleep 10
 mgmt_cli install-policy policy-package "Standard" access true targets.1 "checkpoint" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
+sleep 30
 mgmt_cli install-policy policy-package "Standard" threat-prevention true targets.1 "checkpoint" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
-sleep 5
+sleep 30
 
 if [[ "$a" -eq 1 ]];
  then
