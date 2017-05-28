@@ -57,6 +57,8 @@ fi
 
 
 set_settings(){
+#wait till API server will start	
+sleep 120	
 mgmt_cli login -r true > /home/admin/id.txt
 sleep 10
 mgmt_cli set simple-gateway name "checkpoint" firewall true application-control true url-filtering true ips true anti-bot true anti-virus true threat-emulation false --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
