@@ -24,3 +24,6 @@ source /opt/CPshrd-R80/tmp/.CPprofile.sh
 psql_client cpm postgres< discard_open_sessions.sql >delete.log 2>delete.log
 
 exit 0
+
+
+
