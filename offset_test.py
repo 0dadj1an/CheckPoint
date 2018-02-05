@@ -27,35 +27,39 @@ headers = {
 response = requests.post(url+"show-threat-protections", json=payload_list, headers=headers, verify=False)
 list = response.json()
 total = list['total']
-print total/500
+#rint total/500
 
 client = MongoClient('mongodb://192.168.0.2:27017/')
-db = client['protections-database']
+db = client['protectionsDatabase']
 
-collection = db['protections-collection']
+#collection = db['protectionsCollection']
 
 
 
 for i in range(0,total):
     payload_list['offset']=offset
-    payload_list['limit']=200
+    payload_list['limit']=500
     response = (requests.post(url+"show-threat-protections", json=payload_list, headers=headers, verify=False)).json()
     offset = offset + 500
     
     if response['total'] is 0:
         print "koncim"
-        cursor = db.protections-collection.find()
+        cursor = db.protectionsCollection.find()
+        
         for document in cursor:
             print(document)
-            print(Ahoj)
+        print db.protectionsCollection.count()
         break
         
     else:
-
-        #print response['protections']
-        collection.insert(response['protections'])
-        
-
-
-
-        
+        #print response
+        count = 0
+        for int in response['protections']:
+            count = count + 1
+            #db.collection.update(response['protections'], response['protections'], {upsert: true})
+            print int
+            print db.protectionsCollection.update(int, int, upsert=True)
+            
+            
+        print count
+        print db.protectionsCollection.count()
