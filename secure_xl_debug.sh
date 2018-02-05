@@ -23,6 +23,7 @@ fi
 }
 
 nastav_tcpdump_a_monitor(){
+    
 
 echo "NASTAVENI TCPDUMP A FW_MONITOR:"
 

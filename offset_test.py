@@ -1,6 +1,7 @@
 from IPS_Staging_Updater2 import Connector
 import requests
 import json
+from pymongo import MongoClient
 
 connect = Connector() # connector instance
 sid = connect.get_responce() # save session ID
@@ -28,6 +29,11 @@ list = response.json()
 total = list['total']
 print total/500
 
+client = MongoClient('mongodb://192.168.0.2:27017/')
+db = client['protections-database']
+
+collection = db['protections-collection']
+
 
 
 for i in range(0,total):
@@ -38,10 +44,15 @@ for i in range(0,total):
     
     if response['total'] is 0:
         print "koncim"
+        cursor = db.protections-collection.find()
+        for document in cursor:
+            print(document)
         break
         
     else:
-        print response['protections']
+
+        #print response['protections']
+        collection.insert(response['protections'])
         
     
 
