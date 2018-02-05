@@ -55,12 +55,6 @@ for i in range(0,total):
         #print response['protections']
         collection.insert(response['protections'])
         
-    
-
-
-
-
-
 
 
 

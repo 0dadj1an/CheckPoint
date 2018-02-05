@@ -160,5 +160,8 @@ venv.bak/
 #Pycharm
 .project
 .pydevproject
+#Pycharm
+.project
+.pydevproject
 #visual studio code
 .vscode
