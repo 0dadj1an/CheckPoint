@@ -47,6 +47,7 @@ for i in range(0,total):
         cursor = db.protections-collection.find()
         for document in cursor:
             print(document)
+            print(Ahoj)
         break
         
     else:
