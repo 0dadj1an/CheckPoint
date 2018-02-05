@@ -157,7 +157,8 @@ venv.bak/
 *.sqlite3
 #CP ini files
 *.ini
-#
+#Pycharm
 .project
 .pydevproject
-
+#visual studio code
+.vscode
