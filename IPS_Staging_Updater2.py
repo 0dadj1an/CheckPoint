@@ -95,7 +95,7 @@ class Info_Loader(object):
         constructor for info data. loads user inputs like profile name and action 
       """  
       self.profile_list = [] # 
-      self.default_csv_os_path = raw_input("write full csv path in this format: C:/xxx/xxx.csv :" + '\n') # insert csv file
+      self.default_csv_os_path =raw_input("write full csv path in this format: C:/xxx/xxx.csv :" + '\n') # insert csv file
       print("###########################################################################################################################################")
       self.profile_count = raw_input("write number of profiles you want to modify:" + '\n') # insert number of profiles to modify
       print("###########################################################################################################################################")
@@ -162,7 +162,7 @@ class Connector():
          self.sid=""
          self.task = ""
          config = ConfigParser.ConfigParser()
-         default_cpi_os_path = raw_input("write full cp.ini path where url and credentials for mgmt server are stored in this format: C:/xxx/cp.ini :" + '\n')
+         default_cpi_os_path = 'C:/csv/cp.ini'#raw_input("write full cp.ini path where url and credentials for mgmt server are stored in this format: C:/xxx/cp.ini :" + '\n')
          try:
              
              config.read(default_cpi_os_path) #read from cp.ini file
