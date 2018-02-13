@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 nastav_kernel_secure_xl(){
@@ -23,19 +24,19 @@ fi
 }
 
 nastav_tcpdump_a_monitor(){
-    
 
 echo "NASTAVENI TCPDUMP A FW_MONITOR:"
 
 #tcpdump -s0 -i <interface_facing_client> host <HOST_IP> -w /var/log/client.pcap  &
-tcpdump -s0 -i eth2 host 192.168.10.5 -w /var/log/client.pcap  &
+tcpdump -s0 -i eth2.111 host 192.168.111.235 and host 192.168.0.73 -w /var/log/client.pcap  &
 a=$?
 
 #tcpdump -s0 -i <interface_facing_destination> host <HOST_IP> -w /var/log/destination.pcap &
-tcpdump -s0 -i eth3 host 192.168.10.5 -w /var/log/destination.pcap &
+tcpdump -s0 -i eth5 host 192.168.111.235 and host 192.168.0.73 -w /var/log/destination.pcap &
 b=$?
 
-fw monitor -e "host(192.168.10.5) and host(8.8.8.8), accept;" -o /var/log/fw_mon.cap &
+#/var/log/fw_mon.cap
+fw monitor -e "host(192.168.111.235) and host(192.168.0.73), accept;" -o /var/log/fw_mon.cap &
 c=$?
 
 sleep 2
@@ -77,7 +78,7 @@ if [[ "$a" -eq 1 ]]  ||  [[ "$b" -eq 1 ]]  ||  [[ "$c" -eq 1 ]] ||  [[ "$d" -eq 
         printf "DEBUG bezi!!!\n"
         fw ctl kdebug -T -f >> /var/log/securexl.ctl &
         fwaccel conns >> /var/log/sxl.txt
-        fwaccel templates >> /var/log/E_templates.txt
+        fwaccel templates >> /var/log/templates.txt
         printf "kolektuji fwaccel conns a fwaccel templates do souboru!!!\n"
         printf "########################################\n"
         ps aux | egrep -i "fw ctl kde|fw monitor|tcpdump"

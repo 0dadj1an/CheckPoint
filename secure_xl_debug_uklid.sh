@@ -2,8 +2,8 @@
 
 
 DIRECTORY=/home/admin/debug
-DATE=`date -d "-90 days" --rfc-3339=date`
-TIME=`date +"%T"`
+DATE=`date --rfc-3339=date`
+#TIME=`date +"%T"`
 
 
 
@@ -75,7 +75,7 @@ if [ -d "$DIRECTORY" ]; then
 rm -r /home/admin/debug
 mkdir /home/admin/debug
 cd /home/admin/debug
-tar -czf debug_akcenta_$DATE.tgz /var/log/destination.pcap /var/log/client.pcap /var/log/securexl.ctl /var/log/sxl.txt /var/log/sxl.txt /var/log/templates.txt
+tar -czf debug_akcenta_$DATE.tgz /var/log/destination.pcap /var/log/client.pcap /var/log/securexl.ctl /var/log/sxl.txt /var/log/templates.txt /var/log/fw_mon.cap
 a=$?
 
 if [[ "$a" -eq 1  ]];
@@ -83,7 +83,7 @@ if [[ "$a" -eq 1  ]];
     printf "archivace se nezdarila!!!\n"
 
  else
-    printf "archivace se zdarila\n"
+    printf "archivace se zdarila, vystup v :$DIRECTORY\n"
 
     printf "#########################\n"
 fi

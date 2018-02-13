@@ -8,7 +8,7 @@
 #version    :0.0001
 #usage      :this script is executed after boot via rc.local
 # set IP of machine to 1.1.1.1 by default
-# create LOCK file
+# create LOCK file!!!!!! : /home/admin/first_time.lock
 #
 #==============================================================================
 # CP enviroment variables for cron see sk77300, sk90441
@@ -21,6 +21,9 @@ LOG=/home/admin/first_timelog.log
 IP=1.1.1.1
 A=$(/sbin/ifconfig eth1 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://')
 
+check_point_default_modify(){
+        
+}
 
 run_wizard(){
 	
