@@ -14,6 +14,9 @@
 # CP enviroment variables for cron see sk77300, sk90441
 source /opt/CPshrd-R80/tmp/.CPprofile.sh
 
+
+
+
 #variables
 SCRIPTFOLDER="$( cd "$(dirname "$0")" ; pwd -P )"
 FIRSTIMELOCK="$SCRIPTFOLDER/first_time.lock"
@@ -21,10 +24,13 @@ REBOOTLOCK="$SCRIPTFOLDER/reboot_lock.lock"
 DONELOCK="$SCRIPTFOLDER/done_lock.lock"
 LOG="$SCRIPTFOLDER/first_timelog.log"
 SCRIPTFULLPATH="$SCRIPTFOLDER/poc_first_time_generator_all.sh"
-
- 
+REBOOTSCRIPT="$SCRIPTFOLDER/reboot.sh"
 IP=1.1.1.1
 A=$(/sbin/ifconfig eth1 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://')
+
+
+
+
 
 
 
@@ -188,17 +194,74 @@ chmod -R 755 $importSummaryFile
 chmod -R 755 $installProductFile        
 }
 
+
+
+
+
+
+
+
 #set rights for script itself and add to rc.local
 set_rights_and_rclocal(){
-chown -v admin:bin $SCRIPTFULLPATH
-chmod -v u=rwx,g=rx,a=rx $SCRIPTFULLPATH
+printf "###################\n" >>$LOG
+printf "set rights to script\n" >>$LOG
+chown -v admin:bin $SCRIPTFULLPATH  >>$LOG
+chmod -v u=rwx,g=rx,a=rx $SCRIPTFULLPATH >>$LOG
 echo $SCRIPTFULLPATH >> /etc/rc.local
+cat /etc/rc.local >> $LOG
+printf "###################\n" >>$LOG
 
 }
 
 
 
+
+# check api status
+check_api(){
+
+	count=0
+    printf "###################\n" >>$LOG
+	printf "check api status\n" >>$LOG
+	while true;
+	do
+	sleep 60
+	mgmt_cli login -r true > /home/admin/id.txt
+	a=$?
+	count = count+1
+
+	if [[ "$a" -eq 1 ]];
+       then
+	       printf "API not loaded...\n">>$LOG
+		   if [[ "$a" -eq 11 ]];
+               then
+			   count=0
+			   api restart
+		   fi
+			    
+	    continue
+    else
+	    printf "API loaded\n">>$LOG 
+	    break
+    fi
+	done
+printf "###################\n" >>$LOG
+}
+
+
+
+#reboot box
+reboot(){
+
+	shutdown -r now
+}
+
+
+
+
+
 run_wizard(){
+
+#$REBOOTSCRIPT &
 	
 #basic kernel modification, disable antispoofing and other stuff according to POC gide	
 echo "fw_local_interface_anti_spoofing=0" >> $FWDIR/modules/fwkern.conf
@@ -220,31 +283,44 @@ if [[ "$a" -eq 1 ]];
         printf "######################################\n" >>$LOG
         exit 1
  else
-        printf "######################################\n" >>$LOG
-        printf "firsttime wizard success!!!\n"  >>$LOG
-        printf "######################################\n" >>$LOG
-        echo "rebootfile created after first_time wizard\n" > $REBOOTLOCK
-        sleep 10
-        shutdown -r now
-        exit 0
+        echo "rebootfile created after first_time wizard\n" > $REBOOTLOCK && printf "######################################\n" >>$LOG && printf "firsttime wizard success!!!\n"  >>$LOG && printf "######################################\n" >>$LOG 
+        shutdown -r now &
+		#echo "rebootfile created after first_time wizard\n" > $REBOOTLOCK 
+		
+        	        
 fi
 }
 
 
 
+
+
 set_settings(){
 #wait till API server will start	
-sleep 240	
-mgmt_cli login -r true > /home/admin/id.txt
+check_api	
+#mgmt_cli login -r true > /home/admin/id.txt
 sleep 10
-mgmt_cli set simple-gateway name "checkpoint" firewall true application-control true url-filtering true ips true anti-bot true anti-virus true threat-emulation false --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli set simple-gateway name "checkpoint" firewall true application-control true url-filtering true ips true anti-bot true anti-virus true threat-emulation true content-awareness true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+# dodelej Layer Network a aktivuj app/ atd
+mgmt_cli set access-layer name "Network" applications-and-url-filtering true data-awareness true detect-using-x-forward-for true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli publish -s /home/admin/id.txt >>$LOG 2>>$LOG
+a=$?
 sleep 10
-mgmt_cli add access-rule layer "Network" position 1 name "Rule 1" action "Accept" track "Log" --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+mgmt_cli add access-rule layer "Network" position 1 name "Rule 1" action "Accept" track-settings.type "Detailed Log" track-settings.accounting "True" track-settings.per-connection "True" track-settings.per-session "True"  --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 sleep 10
 mgmt_cli set access-rule name "Cleanup rule" layer "Network" enabled "False"  --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 sleep 10
+mgmt_cli run-ips-update -s /home/admin/id.txt >>$LOG 2>>$LOG
+sleep 10
+# not needed
+mgmt_cli add threat-profile name "POC" active-protections-performance-impact "High" active-protections-severity "Low or above" confidence-level-high "Detect" confidence-level-low "Detect" confidence-level-medium "Detect" threat-emulation true anti-virus true anti-bot true ips true ips-settings.newly-updated-protections "active" --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+#sleep 10
+mgmt_cli set threat-rule rule-number 1 layer "Standard Threat Prevention" comments "commnet for the first rule" protected-scope "Any" action "POC" install-on "Policy Targets" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+
 mgmt_cli publish -s /home/admin/id.txt >>$LOG 2>>$LOG
-a=$?
+b=$?
 sleep 10
 mgmt_cli install-policy policy-package "Standard" access true targets.1 "checkpoint" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
 sleep 30
@@ -252,7 +328,8 @@ mgmt_cli install-policy policy-package "Standard" threat-prevention true targets
 sleep 30
 
 
-if [[ "$a" -eq 1 ]];
+
+if [[ "$a" -eq 1 ]] || [[ "$b" -eq 1 ]];
  then
 	printf "######################################\n"	 >>$LOG 
 	printf "firewall settings crashed, run it again\n"  >>$LOG 
@@ -266,10 +343,12 @@ if [[ "$a" -eq 1 ]];
 	rm -r $REBOOTLOCK
 	mgmt_cli logout -s /home/admin/id.txt >>$LOG 2>>$LOG
 	sleep 10
-	shutdown -r now	
+	/sbin/shutdown -r now >>$LOG 2>>$LOG
 	exit 0
 fi
 }
+
+
 
 
 main_check(){
@@ -286,7 +365,11 @@ main_check(){
         #neexistuje FIRSTIMELOCK a neexistuje REBOOTLOCK a neexistuje DONELOCK
         if [[ ! -f "$FIRSTIMELOCK" ]] && [[ ! -f "$REBOOTLOCK" ]] && [[ ! -f "$DONELOCK" ]];
                 then
+				# set basic settings
 				check_point_default_modify
+				# set rights for script
+				set_rights_and_rclocal
+				# run firt time wizard
                 run_wizard
         fi
 
@@ -305,6 +388,10 @@ main_check(){
 
   done
 }
+
+
+
+
 
 
 ip_checker(){
@@ -329,13 +416,15 @@ done
 
 
 
+
+
 #MAIN CODE
 #
 #lock creation 
 
 #initial log
-printf "Local IP is $A\n"	>>$LOG 
+printf "################################\n" >>$LOG 
+printf "Local IP of eth1 is: $A\n"	>>$LOG 
 ip_checker
-
 
 
