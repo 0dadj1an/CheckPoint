@@ -1,5 +1,6 @@
 #!/bin/bash
 # scrip for OS level config details
+#ivosh
 
 
 DNS1="8.8.8.8"

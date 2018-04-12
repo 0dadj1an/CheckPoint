@@ -1,4 +1,5 @@
 #!/bin/bash
+#ivohrbacek@gmail.com
 
 
 cpsemd_on(){

@@ -1,3 +1,9 @@
+"""
+offset testing and loading datta into mongodb
+
+ivohrbacek@gmail.com
+"""
+
 from IPS_Staging_Updater2 import Connector
 import requests
 import json

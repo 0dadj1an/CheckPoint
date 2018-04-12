@@ -1,3 +1,8 @@
+
+#author     :ivo.hrbacek@ixperta.com
+#version    :0.0001
+
+
 import csv
 global VLAN
 
