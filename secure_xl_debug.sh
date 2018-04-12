@@ -1,5 +1,6 @@
 
 #!/bin/bash
+#ivohrbacek@gmail.com
 
 nastav_kernel_secure_xl(){
 

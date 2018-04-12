@@ -1,4 +1,5 @@
 #!/bin/bash
+#ivohrbacek@gmail.com
 
 
 DIRECTORY=/home/admin/debug

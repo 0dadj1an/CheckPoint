@@ -1,3 +1,11 @@
+"""
+original from CP:
+
+https://supportcenter.checkpoint.com/supportcenter/portal?action=portlets.DCFileAction&eventSubmit_doGetdcdetails=&fileid=55790
+
+updated by ivosh
+"""
+
 import os, time, datetime, sys, shutil
 
 fwdir = os.environ['FWDIR']
