@@ -23,16 +23,164 @@ FIRSTIMELOCK="$SCRIPTFOLDER/first_time.lock"
 REBOOTLOCK="$SCRIPTFOLDER/reboot_lock.lock"
 DONELOCK="$SCRIPTFOLDER/done_lock.lock"
 LOG="$SCRIPTFOLDER/first_timelog.log"
+RESTART="$SCRIPTFOLDER/restart_lock.lock"
 SCRIPTFULLPATH="$SCRIPTFOLDER/poc_first_time_generator_all.sh"
 REBOOTSCRIPT="$SCRIPTFOLDER/reboot.sh"
 IP=1.1.1.1
 A=$(/sbin/ifconfig eth1 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://')
+DNS1="8.8.8.8"
+DNS2="8.8.4.4"
+TIMESERVER="europe.pool.ntp.org"
+LOGOS="$SCRIPTFOLDER/os.log"
+CMD="$SCRIPTFOLDER/cmd.txt"
+MONITORIF="$SCRIPTFOLDER/monitor.txt"
+MGMTIF="$SCRIPTFOLDER/mgmt.txt"
+MGMTMASK="$SCRIPTFOLDER/mgmtmask.txt"
+MGMTIP="$SCRIPTFOLDER/mgmtip.txt"
 
 
 
 
 
 
+
+#### OS config#####
+
+check_logs(){
+
+    # check LOGOS files and delete them if exists
+      if [[ -f "$LOGOS" ]];
+                then
+                rm -r $LOGOS
+                date >> $LOGOS
+                printf "script starting...\n" >>$LOGOS
+      fi
+
+      if [[ -f "$CMD" ]];
+                then
+                rm -r $CMD
+      fi
+
+     clish -c 'lock database override' -s  >>$LOGOS
+     clish -c 'set user admin shell /bin/bash' -s >> $LOGOS
+     clish -c 'save config' -s >> $LOGOS
+      
+
+
+}
+
+
+set_config(){
+
+#set state of interfaces
+echo "set interface $mgmt state on" >>$CMD
+echo "set interface $monitor state on" >>$CMD
+#echo "set interface eth2 state on" >>$CMD
+
+#config interfaces
+echo "set interface $monitor monitor-mode on" >>$CMD
+echo "set interface $mgmt ipv4-address $ip mask-length $mask " >>$CMD
+#echo "set interface eth2 ipv4-address 2.2.2.2 mask-length 24" >>$CMD
+echo "set static-route default nexthop gateway address $gw on" >>$CMD
+echo "set dns primary $DNS1">>$CMD
+echo "set dns secondary $DNS2">>$CMD
+echo "set hostname checkpointPOC" >>$CMD
+echo "$mgmt" >>$MGMTIF
+echo "$mask" >>$MGMTMASK
+echo "$ip" >> $MGMTIP
+echo "$monitor" >>$MONITORIF
+
+
+}
+
+
+load_parameters(){
+
+    # load parameters and print them as template which will be loaded , if not correct after revision, it will be loaded again
+    
+    
+    # check LOGOS fies
+    check_logs
+
+    while true;
+    do
+            # read data
+            echo "enter management interface"
+            read mgmt
+            echo "enter monitor interface"
+            read monitor
+            echo "enter management IP"
+            read ip
+            echo "enter management MASK in format: 24 or 16 or 27 etc."
+            read mask
+            echo "enter management default gateway"
+            read gw
+			printf "default host name is checkpointPOC..\n"
+
+			
+
+            # run set method
+            set_config
+
+            
+            # check rest
+            printf "\n"
+            printf "Printing config template:\n"
+            cat $CMD
+            printf "\n"
+            printf "Is that correct? Write YES to continue..\n"
+            read answer
+
+            if [[ "$answer" == "YES" ]];
+                then
+                printf "load_parameters() is okay..\n" >> $LOGOS 
+                execute_config
+                else
+                 printf "Loading again..\n"
+                 printf "again loading parameters from load_parameters() because it was not confirmed..\n" >>$LOGOS
+                 printf "removing CMD template from load_parameters()\n" >>$LOGOS
+                 rm -r $CMD
+                 continue
+            fi
+    done
+}
+
+
+execute_config(){
+
+clish -c 'lock database override' -s 
+clish -f /home/admin/cmd.txt 
+
+sleep 5
+printf " Write YES to continue..\n"
+read answer
+
+            if [[ "$answer" == "YES" ]];
+                then
+                    printf "All configured...check os.log if needed\n"
+                    printf "execute_config() is okay..\n" >>$LOGOS
+                    clish -c 'save config' -s >> $LOGOS
+                    break
+            else
+                 printf "Loading again because it was not commited..\n"
+                 printf "again loading parameters from execute_config() method because it was not confirmed..\n" >>$LOGOS
+                 printf "removing CMD template from execute_config()\n" >>$LOGOS
+                 rm -r $CMD
+                 load_parameters
+            fi
+
+
+}
+
+
+
+###################   end of OS config  ##########################
+
+
+
+
+
+########## POC config ################
 
 # default parameters setting before first_time_wizard
 check_point_default_modify(){
@@ -198,20 +346,18 @@ chmod -R 755 $installProductFile
 
 
 
-
-
-
 #set rights for script itself and add to rc.local
 set_rights_and_rclocal(){
 printf "###################\n" >>$LOG
 printf "set rights to script\n" >>$LOG
 chown -v admin:bin $SCRIPTFULLPATH  >>$LOG
-chmod -v u=rwx,g=rx,a=rx $SCRIPTFULLPATH >>$LOG
+chmod -v u=rwx,g=rwx,a=rwx $SCRIPTFULLPATH >>$LOG
 echo $SCRIPTFULLPATH >> /etc/rc.local
 cat /etc/rc.local >> $LOG
 printf "###################\n" >>$LOG
 
 }
+
 
 
 
@@ -249,19 +395,13 @@ printf "###################\n" >>$LOG
 
 
 
-#reboot box
-reboot(){
-
-	shutdown -r now
-}
 
 
 
-
+# method for first time wizard settings
 
 run_wizard(){
 
-#$REBOOTSCRIPT &
 	
 #basic kernel modification, disable antispoofing and other stuff according to POC gide	
 echo "fw_local_interface_anti_spoofing=0" >> $FWDIR/modules/fwkern.conf
@@ -274,18 +414,15 @@ echo "fw_tap_enable=1" >> $FWDIR/modules/fwkern.conf
 
 
 #run basic first time wizard
-/bin/config_system -s 'install_security_managment=true&install_mgmt_primary=true&install_mgmt_secondary=false&install_security_gw=true&mgmt_gui_clients_radio=any&mgmt_admin_name=admin&mgmt_admin_passwd=checkpoint123&hostname=checkpoint&ntp_primary=europe.pool.ntp.org&primary=8.8.8.8&download_info=true&timezone=Europe/Vienna' 
+/bin/config_system -s 'install_security_managment=true&install_mgmt_primary=true&install_mgmt_secondary=false&install_security_gw=true&mgmt_gui_clients_radio=any&mgmt_admin_name=admin&mgmt_admin_passwd=checkpoint123&hostname=checkpointPOC&ntp_primary=europe.pool.ntp.org&primary=8.8.8.8&download_info=true&timezone=Europe/Vienna' 
 a=$? 
 if [[ "$a" -eq 1 ]];
- then
-        printf "######################################\n" >>$LOG
+ then 
         printf "firsttime wizard crashed, run it again\n" >>$LOG
-        printf "######################################\n" >>$LOG
         exit 1
  else
-        echo "rebootfile created after first_time wizard\n" > $REBOOTLOCK && printf "######################################\n" >>$LOG && printf "firsttime wizard success!!!\n"  >>$LOG && printf "######################################\n" >>$LOG 
-        shutdown -r now &
-		#echo "rebootfile created after first_time wizard\n" > $REBOOTLOCK 
+        echo "rebootfile created after first_time wizard\n" > $REBOOTLOCK && echo "reboot lock" > $RESTART  && printf "firsttime wizard success!!!\n" >>$LOG && printf "######################################\n" >>$LOG 
+		exit 0
 		
         	        
 fi
@@ -295,41 +432,90 @@ fi
 
 
 
+# method for fw configuration
 set_settings(){
+
 #wait till API server will start	
 check_api	
-#mgmt_cli login -r true > /home/admin/id.txt
-sleep 10
-mgmt_cli set simple-gateway name "checkpoint" firewall true application-control true url-filtering true ips true anti-bot true anti-virus true threat-emulation true content-awareness true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+
+
+printf "######################################\n" >>$LOG
+printf "configuring simple gateway blades, Layer and adding Allow rule + log..\n" >>$LOG
+mgmt_cli set simple-gateway name "checkpointPOC" firewall true application-control true url-filtering true ips true anti-bot true anti-virus true threat-emulation true content-awareness true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 # dodelej Layer Network a aktivuj app/ atd
 mgmt_cli set access-layer name "Network" applications-and-url-filtering true data-awareness true detect-using-x-forward-for true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 mgmt_cli publish -s /home/admin/id.txt >>$LOG 2>>$LOG
-a=$?
-sleep 10
+c=$?
 
 mgmt_cli add access-rule layer "Network" position 1 name "Rule 1" action "Accept" track-settings.type "Detailed Log" track-settings.accounting "True" track-settings.per-connection "True" track-settings.per-session "True"  --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-sleep 10
+
 mgmt_cli set access-rule name "Cleanup rule" layer "Network" enabled "False"  --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-sleep 10
+
+printf "######################################\n" >>$LOG
+
+
+# not needed, already done for Optimized profile in method checkpoint_default_modify()
+#printf "TP policy and rules..\n" >>$LOG
+#mgmt_cli add threat-profile name "POC" active-protections-performance-impact "High" active-protections-severity "Low or above" confidence-level-high "Detect" confidence-level-low "Detect" confidence-level-medium "Detect" threat-emulation true anti-virus true anti-bot true ips true ips-settings.newly-updated-protections "active" --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+#mgmt_cli set threat-rule rule-number 1 layer "Standard Threat Prevention" comments "commnet for the first rule" protected-scope "Any" action "POC" install-on "Policy Targets" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+#printf "######################################\n" >>$LOG
+
+printf "######################################\n" >>$LOG
+printf "Aditional blade settings..\n" >>$LOG
+# aditional settings
+# get CP object UID in a variable
+a=$(mgmt_cli -r true show simple-gateway name checkpointPOC | grep "uid" | head -1  | awk -F':' '{ gsub(" ", "", $0 ); print $2 }')
+# other possible way ho to do that
+#mgmt_cli set generic-object uid $(mgmt_cli -r true show simple-gateway name checkpointPOC | grep "uid" | head -1  | awk -F':' '{ gsub(" ", "", $0 ); print $2 }') enableRtmTrafficReportPerConnection true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+
+# monitoring blade
+mgmt_cli set generic-object uid $a realTimeMonitor true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli set generic-object uid $a enableRtmTrafficReportPerConnection true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli set generic-object uid $a enableRtmTrafficReport true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli set generic-object uid $a enableRtmCountersReport true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+#indexing
+mgmt_cli set generic-object uid $a logIndexer true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+#correlation unit
+mgmt_cli set generic-object uid $a eventAnalyzer true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+#smartevent server
+mgmt_cli set generic-object uid $a abacusServer true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+#rest unused, just for testing
+#mgmt_cli -r true set generic-object uid $a smarteventIntro true >>$LOG 2>>$LOG
+#mgmt_cli -r true set generic-object uid $a ipsEventCorrelator true >>$LOG 2>>$LOG
+#mgmt_cli -r true set generic-object uid $a ipsEventManager true >>$LOG 2>>$LOG
+
+# topology definition 
+mgmt_cli add simple-gateway name "checkpointPOC" interfaces.1.name $(cat $MGMTIF) interfaces.1.ipv4-address $(cat $MGMTIP) interfaces.1.ipv4-mask-length $(cat $MGMTMASK) interfaces.1.topology internal interfaces.2.name $(cat $MONITORIF) interfaces.2.ipv4-address 0.0.0.0 interfaces.2.ipv4-mask-length 32 interfaces.2.topology external --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+printf "######################################\n" >>$LOG
+printf "IPS update..\n" >>$LOG
 mgmt_cli run-ips-update -s /home/admin/id.txt >>$LOG 2>>$LOG
-sleep 10
-# not needed
-mgmt_cli add threat-profile name "POC" active-protections-performance-impact "High" active-protections-severity "Low or above" confidence-level-high "Detect" confidence-level-low "Detect" confidence-level-medium "Detect" threat-emulation true anti-virus true anti-bot true ips true ips-settings.newly-updated-protections "active" --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 #sleep 10
-mgmt_cli set threat-rule rule-number 1 layer "Standard Threat Prevention" comments "commnet for the first rule" protected-scope "Any" action "POC" install-on "Policy Targets" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
 
 
-mgmt_cli publish -s /home/admin/id.txt >>$LOG 2>>$LOG
+printf "######################################\n" >>$LOG
+#publish
+mgmt_cli publish -s /home/admin/id.txt >>$LOG 2>>$LOG >>$LOG 2>>$LOG
 b=$?
-sleep 10
-mgmt_cli install-policy policy-package "Standard" access true targets.1 "checkpoint" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
-sleep 30
-mgmt_cli install-policy policy-package "Standard" threat-prevention true targets.1 "checkpoint" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
-sleep 30
+#sleep 10
+printf "######################################\n" >>$LOG
 
+printf "######################################\n" >>$LOG
+printf "Policy install..\n" >>$LOG
+mgmt_cli install-policy policy-package "Standard" access true threat-prevention false targets.1 "checkpointPOC" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
+#sleep 10
+mgmt_cli install-policy policy-package "Standard" access false threat-prevention true targets.1 "checkpointPOC" --format json -s /home/admin/id.txt >>$LOG 2>>$LOG
+#sleep 10
+printf "######################################\n" >>$LOG
 
-
-if [[ "$a" -eq 1 ]] || [[ "$b" -eq 1 ]];
+#check status of publish..
+if [[ "$c" -eq 1 ]] || [[ "$b" -eq 1 ]];
  then
 	printf "######################################\n"	 >>$LOG 
 	printf "firewall settings crashed, run it again\n"  >>$LOG 
@@ -351,9 +537,11 @@ fi
 
 
 
+
+
 main_check(){
   while true;
- # loop checking lock files
+ # loop checking lock files to make appropriate configs
   do
 	
         #existuje FIRSTIMELOCK a zaroven neexistuje REBOOTLOCK
@@ -365,6 +553,8 @@ main_check(){
         #neexistuje FIRSTIMELOCK a neexistuje REBOOTLOCK a neexistuje DONELOCK
         if [[ ! -f "$FIRSTIMELOCK" ]] && [[ ! -f "$REBOOTLOCK" ]] && [[ ! -f "$DONELOCK" ]];
                 then
+				# call OS config
+                load_parameters
 				# set basic settings
 				check_point_default_modify
 				# set rights for script
@@ -394,6 +584,9 @@ main_check(){
 
 
 
+
+# first idea of this method was to catch change on OS level and start first time wizard - IP will be changed via ESX API, but no way on ESXi - remains because it does not
+# bring any problems
 ip_checker(){
 	
 while true;
@@ -405,7 +598,7 @@ do
                 rm -r $LOG >/dev/null 2>/dev/null
                 continue              
 	fi
-	printf "IP changed, removing lock file\n" >>$LOG
+	#printf "IP changed, removing lock file\n" >>$LOG
 	rm -r /home/admin/first_time.lock >/dev/null 2>/dev/null
 	printf "entering main check\n" >>$LOG
 	main_check
@@ -414,17 +607,14 @@ done
 	
 }
 
+###################   end of POC config  ##########################
 
 
-
-
-#MAIN CODE
-#
-#lock creation 
+#MAIN CODE BLOCK - just run ip_checker
 
 #initial log
 printf "################################\n" >>$LOG 
-printf "Local IP of eth1 is: $A\n"	>>$LOG 
+printf "Starting script..\n">>$LOG 
+
+# settings
 ip_checker
-
-
