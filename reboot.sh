@@ -12,6 +12,6 @@ source /opt/CPshrd-R80/tmp/.CPprofile.sh
 
 #variables
 SCRIPTFOLDER="$( cd "$(dirname "$0")" ; pwd -P )"
-RESTART="$SCRIPTFOLDER/restart_lock.lock"
+REBOOTLOCK="$SCRIPTFOLDER/reboot_lock.lock"
 
-while true; do sleep 10; if [[ -f "$RESTART" ]]; then rm -r $RESTART; shutdown -r now; fi; done 
+while true; do sleep 10; if [[ -f "$REBOOTLOCK" ]]; then shutdown -r now; fi; done 

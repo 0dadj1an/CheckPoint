@@ -23,9 +23,7 @@ FIRSTIMELOCK="$SCRIPTFOLDER/first_time.lock"
 REBOOTLOCK="$SCRIPTFOLDER/reboot_lock.lock"
 DONELOCK="$SCRIPTFOLDER/done_lock.lock"
 LOG="$SCRIPTFOLDER/first_timelog.log"
-RESTART="$SCRIPTFOLDER/restart_lock.lock"
 SCRIPTFULLPATH="$SCRIPTFOLDER/poc_first_time_generator_all.sh"
-REBOOTSCRIPT="$SCRIPTFOLDER/reboot.sh"
 IP=1.1.1.1
 A=$(/sbin/ifconfig eth1 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://')
 DNS1="8.8.8.8"
@@ -93,6 +91,32 @@ echo "$monitor" >>$MONITORIF
 
 }
 
+execute_config(){
+
+clish -c 'lock database override' -s 
+clish -f /home/admin/cmd.txt 
+
+sleep 5
+printf " Write YES to continue and OS config will be saved and first time wizard will start... [if you changed your mind and config needs to be updated, write any other character..]\n"
+read answer
+
+            if [[ "$answer" == "YES" ]];
+                then
+                    printf "All configured...check os.log if needed\n"
+                    printf "execute_config() is okay..\n" >>$LOGOS
+                    clish -c 'save config' -s >> $LOGOS
+                    break
+            else
+                 printf "Loading again because it was not commited..\n"
+                 printf "again loading parameters from execute_config() method because it was not confirmed..\n" >>$LOGOS
+                 printf "removing CMD template from execute_config()\n" >>$LOGOS
+                 rm -r $CMD
+                 load_parameters
+            fi
+
+
+}
+
 
 load_parameters(){
 
@@ -137,7 +161,7 @@ load_parameters(){
                 execute_config
                 else
                  printf "Loading again..\n"
-                 printf "again loading parameters from load_parameters() because it was not confirmed..\n" >>$LOGOS
+                 printf "again loading parameters from load_parameters() method because it was not confirmed..\n" >>$LOGOS
                  printf "removing CMD template from load_parameters()\n" >>$LOGOS
                  rm -r $CMD
                  continue
@@ -146,36 +170,7 @@ load_parameters(){
 }
 
 
-execute_config(){
-
-clish -c 'lock database override' -s 
-clish -f /home/admin/cmd.txt 
-
-sleep 5
-printf " Write YES to continue..\n"
-read answer
-
-            if [[ "$answer" == "YES" ]];
-                then
-                    printf "All configured...check os.log if needed\n"
-                    printf "execute_config() is okay..\n" >>$LOGOS
-                    clish -c 'save config' -s >> $LOGOS
-                    break
-            else
-                 printf "Loading again because it was not commited..\n"
-                 printf "again loading parameters from execute_config() method because it was not confirmed..\n" >>$LOGOS
-                 printf "removing CMD template from execute_config()\n" >>$LOGOS
-                 rm -r $CMD
-                 load_parameters
-            fi
-
-
-}
-
-
-
 ###################   end of OS config  ##########################
-
 
 
 
@@ -349,12 +344,27 @@ chmod -R 755 $installProductFile
 #set rights for script itself and add to rc.local
 set_rights_and_rclocal(){
 printf "###################\n" >>$LOG
-printf "set rights to script\n" >>$LOG
+printf "set rights to script...\n" >>$LOG
+printf ""
 chown -v admin:bin $SCRIPTFULLPATH  >>$LOG
 chmod -v u=rwx,g=rwx,a=rwx $SCRIPTFULLPATH >>$LOG
-echo $SCRIPTFULLPATH >> /etc/rc.local
-cat /etc/rc.local >> $LOG
-printf "###################\n" >>$LOG
+
+# returns 0 if text is find in file - in our case searching for path to sript to avoid situation it will be added twice
+if grep -Fxq "$SCRIPTFULLPATH" /etc/rc.local
+   then
+    # path string find in rc.local..
+    printf "path to script already in /etc/rc.local..\n" >>$LOG
+    cat /etc/rc.local >> $LOG
+
+   else
+    # not found, add it..
+    echo $SCRIPTFULLPATH >> /etc/rc.local
+    printf "See rc.local file below..\n"
+    cat /etc/rc.local >> $LOG
+    printf ""
+    printf "###################\n" >>$LOG
+fi
+
 
 }
 
@@ -378,10 +388,10 @@ check_api(){
 	if [[ "$a" -eq 1 ]];
        then
 	       printf "API not loaded...\n">>$LOG
-		   if [[ "$a" -eq 11 ]];
+		   if [[ "$a" -eq 15 ]];
                then
 			   count=0
-			   api restart
+			   api restart >>$LOG
 		   fi
 			    
 	    continue
@@ -402,6 +412,9 @@ printf "###################\n" >>$LOG
 
 run_wizard(){
 
+printf "################################\n" >>$LOG 
+printf "Starting first time wizard..\n">>$LOG 
+
 	
 #basic kernel modification, disable antispoofing and other stuff according to POC gide	
 echo "fw_local_interface_anti_spoofing=0" >> $FWDIR/modules/fwkern.conf
@@ -415,13 +428,16 @@ echo "fw_tap_enable=1" >> $FWDIR/modules/fwkern.conf
 
 #run basic first time wizard
 /bin/config_system -s 'install_security_managment=true&install_mgmt_primary=true&install_mgmt_secondary=false&install_security_gw=true&mgmt_gui_clients_radio=any&mgmt_admin_name=admin&mgmt_admin_passwd=checkpoint123&hostname=checkpointPOC&ntp_primary=europe.pool.ntp.org&primary=8.8.8.8&download_info=true&timezone=Europe/Vienna' 
-a=$? 
+a=$?
+echo "rebootfile created after first_time wizard\n" > $REBOOTLOCK
+
 if [[ "$a" -eq 1 ]];
  then 
         printf "firsttime wizard crashed, run it again\n" >>$LOG
         exit 1
  else
-        echo "rebootfile created after first_time wizard\n" > $REBOOTLOCK && echo "reboot lock" > $RESTART  && printf "firsttime wizard success!!!\n" >>$LOG && printf "######################################\n" >>$LOG 
+        printf "firsttime wizard success!!!\n" >>$LOG 
+        printf "######################################\n" >>$LOG 
 		exit 0
 		
         	        
@@ -435,6 +451,9 @@ fi
 # method for fw configuration
 set_settings(){
 
+printf "################################\n" >>$LOG 
+printf "Starting configuration of blades..\n">>$LOG 
+
 #wait till API server will start	
 check_api	
 
@@ -445,6 +464,38 @@ printf "configuring simple gateway blades, Layer and adding Allow rule + log..\n
 mgmt_cli set simple-gateway name "checkpointPOC" firewall true application-control true url-filtering true ips true anti-bot true anti-virus true threat-emulation true content-awareness true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 # dodelej Layer Network a aktivuj app/ atd
 mgmt_cli set access-layer name "Network" applications-and-url-filtering true data-awareness true detect-using-x-forward-for true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+printf "######################################\n" >>$LOG
+printf "Aditional blade settings..\n" >>$LOG
+# aditional settings
+# get CP object UID in a variable
+
+printf "Get UID of POC GW..\n" >>$LOG
+a=$(mgmt_cli -r true show simple-gateway name checkpointPOC | grep "uid" | head -1  | awk -F':' '{ gsub(" ", "", $0 ); print $2 }')
+# other possible way ho to do that
+#mgmt_cli set generic-object uid $(mgmt_cli -r true show simple-gateway name checkpointPOC | grep "uid" | head -1  | awk -F':' '{ gsub(" ", "", $0 ); print $2 }') enableRtmTrafficReportPerConnection true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+printf "$a" >> >>$LOG
+
+# monitoring blade
+printf "Monitoring blade settings..\n" >>$LOG
+mgmt_cli set generic-object uid $a realTimeMonitor true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli set generic-object uid $a enableRtmTrafficReportPerConnection true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli set generic-object uid $a enableRtmTrafficReport true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli set generic-object uid $a enableRtmCountersReport true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+#indexing
+printf "Indexing and Smart Event..\n" >>$LOG
+mgmt_cli set generic-object uid $a logIndexer true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+#correlation unit
+mgmt_cli set generic-object uid $a eventAnalyzer true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+#smartevent server
+mgmt_cli set generic-object uid $a abacusServer true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+
+#rest unused, just for testing
+#mgmt_cli -r true set generic-object uid $a smarteventIntro true >>$LOG 2>>$LOG
+#mgmt_cli -r true set generic-object uid $a ipsEventCorrelator true >>$LOG 2>>$LOG
+#mgmt_cli -r true set generic-object uid $a ipsEventManager true >>$LOG 2>>$LOG
+
 mgmt_cli publish -s /home/admin/id.txt >>$LOG 2>>$LOG
 c=$?
 
@@ -463,35 +514,11 @@ printf "######################################\n" >>$LOG
 
 #printf "######################################\n" >>$LOG
 
-printf "######################################\n" >>$LOG
-printf "Aditional blade settings..\n" >>$LOG
-# aditional settings
-# get CP object UID in a variable
-a=$(mgmt_cli -r true show simple-gateway name checkpointPOC | grep "uid" | head -1  | awk -F':' '{ gsub(" ", "", $0 ); print $2 }')
-# other possible way ho to do that
-#mgmt_cli set generic-object uid $(mgmt_cli -r true show simple-gateway name checkpointPOC | grep "uid" | head -1  | awk -F':' '{ gsub(" ", "", $0 ); print $2 }') enableRtmTrafficReportPerConnection true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 
-
-# monitoring blade
-mgmt_cli set generic-object uid $a realTimeMonitor true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-mgmt_cli set generic-object uid $a enableRtmTrafficReportPerConnection true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-mgmt_cli set generic-object uid $a enableRtmTrafficReport true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-mgmt_cli set generic-object uid $a enableRtmCountersReport true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-
-#indexing
-mgmt_cli set generic-object uid $a logIndexer true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-#correlation unit
-mgmt_cli set generic-object uid $a eventAnalyzer true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-#smartevent server
-mgmt_cli set generic-object uid $a abacusServer true --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
-
-#rest unused, just for testing
-#mgmt_cli -r true set generic-object uid $a smarteventIntro true >>$LOG 2>>$LOG
-#mgmt_cli -r true set generic-object uid $a ipsEventCorrelator true >>$LOG 2>>$LOG
-#mgmt_cli -r true set generic-object uid $a ipsEventManager true >>$LOG 2>>$LOG
-
+printf "############################"
+prinft "Topology definition..\n"
 # topology definition 
-mgmt_cli add simple-gateway name "checkpointPOC" interfaces.1.name $(cat $MGMTIF) interfaces.1.ipv4-address $(cat $MGMTIP) interfaces.1.ipv4-mask-length $(cat $MGMTMASK) interfaces.1.topology internal interfaces.2.name $(cat $MONITORIF) interfaces.2.ipv4-address 0.0.0.0 interfaces.2.ipv4-mask-length 32 interfaces.2.topology external --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
+mgmt_cli set simple-gateway name "checkpointPOC" interfaces.1.name $(cat $MGMTIF) interfaces.1.ipv4-address $(cat $MGMTIP) interfaces.1.ipv4-mask-length $(cat $MGMTMASK) interfaces.1.topology internal interfaces.2.name $(cat $MONITORIF) interfaces.2.ipv4-address 0.0.0.0 interfaces.2.ipv4-mask-length 32 interfaces.2.topology external --format json ignore-warnings true -s /home/admin/id.txt >>$LOG 2>>$LOG
 
 printf "######################################\n" >>$LOG
 printf "IPS update..\n" >>$LOG
@@ -598,9 +625,7 @@ do
                 rm -r $LOG >/dev/null 2>/dev/null
                 continue              
 	fi
-	#printf "IP changed, removing lock file\n" >>$LOG
 	rm -r /home/admin/first_time.lock >/dev/null 2>/dev/null
-	printf "entering main check\n" >>$LOG
 	main_check
 
 done
@@ -612,9 +637,5 @@ done
 
 #MAIN CODE BLOCK - just run ip_checker
 
-#initial log
-printf "################################\n" >>$LOG 
-printf "Starting script..\n">>$LOG 
 
-# settings
 ip_checker
