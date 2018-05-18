@@ -1,5 +1,4 @@
 
-#[root@localhost:/etc/rc.local.d] cat local.sh
 #!/bin/sh
 
 # local configuration options
@@ -13,12 +12,27 @@
 
 # Note: This script will not be run when UEFI secure boot is enabled.
 
+
+# script is modifyed by ivohrbacek@ixperta.com
+
+echo "server booted" >> /ips_tracking.log
 #after reboot shutdown IPS interfaces before machine will be running
 esxcli network nic down -n vmnic6
 esxcli network nic down -n vmnic7
 
+#wait and do autostart of machines after manual or maintenance reboot
+sleep 22
 
-#run IPS tracking script
+/sbin/vmware-autostart.sh start
+echo "autostart running" >> /ips_tracking.log
+
+sleep 22
+#wait till machine will start and turn on interfaces
+esxcli network nic up -n vmnic6
+esxcli network nic up -n vmnic7
+
+
+#run IPS tracking script to check availability
 #
 #==============================================================================
 #title      :tracking script
@@ -48,6 +62,7 @@ do
                                         esxcli network nic down -n vmnic7
                                         echo "###" >> /ips_tracking.log
                                         CHECKER=1
+                                        echo $CHECKER >> /ips_tracking.log
                                         fi
                                 fi
                 else
@@ -56,6 +71,8 @@ do
                                 echo "Enabling interfaces vmnic6 and vmnic7" >> /ips_tracking.log
                                 esxcli network nic up -n vmnic7
                                 esxcli network nic up -n vmnic6
+                                echo "###" >> /ips_tracking.log
+                                echo "###" >> /ips_tracking.log
                                 CHECKER=0
 
                         fi
@@ -63,8 +80,7 @@ do
 sleep 1
 done
 
-[root@localhost:/etc/rc.local.d]
 
-#
-#
-###
+#[root@localhost:/etc/rc.local.d] pwd
+#/etc/rc.local.d
+#í[root@localhost:/etc/rc.local.d]
