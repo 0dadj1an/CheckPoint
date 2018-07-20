@@ -9,9 +9,8 @@
 #==============================================================================
 source /opt/CPshrd-R80/tmp/.CPprofile.sh
 
-# ARRO ISP1 
 # host to modify
-HOST=181.30.162.113 
+HOST=XXX
 
 # icmp SLA test count
 COUNT=5
