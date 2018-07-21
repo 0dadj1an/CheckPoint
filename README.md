@@ -1,5 +1,4 @@
 # CheckPoint 
 
-scrips related to my lovely Check Point firewalls :P
+this is examle of script which do auto installation of firewall policies on versions R77
 
-check appropriate branches..
