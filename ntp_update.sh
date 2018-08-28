@@ -1,7 +1,7 @@
 #!/bin/bash -f
 #
 #==============================================================================
-#title      :first time generator for POC help sritpt for loading basic config data
+#title      :ntp_updater
 #author     :ivo.hrbacek@ixperta.com a laura
 #version    :0.0001
 # CP enviroment variables for cron see sk77300, sk90441
