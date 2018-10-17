@@ -43,7 +43,7 @@ list = response.json()
 total = list['total']
 #rint total/500
 
-client = MongoClient('mongodb://192.168.0.2:27017/', maxPoolSize=200)
+client = MongoClient('mongodb://192.168.0.252:27017/', maxPoolSize=200)
 db = client['protectionsDatabase']
 
 #collection = db['protectionsCollection']
